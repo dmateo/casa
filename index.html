@@ -211,6 +211,7 @@
       <h2>Ideas? Complaints? 💬</h2>
       <p style="font-size:14px;color:var(--ink-soft);margin-bottom:12px;">Casa is brand new and built on your feedback. What's missing, broken, or annoying?</p>
       <textarea id="fbText" maxlength="2000" placeholder="Tell us anything…" style="width:100%;min-height:80px;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;font-size:16px;font-family:inherit;background:#FFFDF9;color:var(--ink);outline:none;resize:vertical;margin-bottom:10px;"></textarea>
+      <input id="fbEmail" type="email" maxlength="120" placeholder="Email (optional — if you'd like a reply)">
       <button onclick="sendFeedback()">Send feedback</button>
     </div>
     <div class="card">
@@ -231,6 +232,25 @@ const SUPABASE_KEY = "sb_publishable_t7PZycVnZLanc_Rr0HGeKw_axe7nPAt";
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let state = { household: null, members: [], me: null, expenses: [], settlements: [], chores: [] };
+
+// ---------- telemetry ----------
+const SRC = (() => {
+  const p = new URLSearchParams(location.search).get("src");
+  if (p) localStorage.setItem("casa_src", p.slice(0, 40));
+  return localStorage.getItem("casa_src") || null;
+})();
+async function logEvent(type, extra) {
+  try {
+    await db.from("events").insert({ type, src: SRC, household_id: state.household ? state.household.id : null, meta: extra || null });
+  } catch (e) { /* never break the app for telemetry */ }
+}
+let errCount = 0;
+window.addEventListener("error", ev => {
+  if (errCount++ < 5) logEvent("error", { msg: String(ev.message).slice(0, 300), ua: navigator.userAgent });
+});
+window.addEventListener("unhandledrejection", ev => {
+  if (errCount++ < 5) logEvent("error", { msg: String(ev.reason).slice(0, 300), ua: navigator.userAgent });
+});
 
 const $ = id => document.getElementById(id);
 const fmt = n => (n < 0 ? "-" : "") + "$" + Math.abs(n).toFixed(2);
@@ -269,10 +289,11 @@ async function createHouse() {
   const name = $("newHouseName").value.trim(), you = $("newYourName").value.trim();
   if (!name || !you) return toast("Fill in both fields");
   const { data: hh, error } = await db.from("households")
-    .insert({ name, invite_code: genCode() }).select().single();
+    .insert({ name, invite_code: genCode(), src: SRC }).select().single();
   if (error) return toast("Couldn't create house — try again");
   const { data: me } = await db.from("members").insert({ household_id: hh.id, name: you }).select().single();
   state.household = hh; state.me = me;
+  logEvent("house_created");
   saveSession(); await enterApp();
   toast("Welcome home! Share your invite code 🎉");
 }
@@ -291,6 +312,7 @@ async function joinHouse() {
     me = res.data;
   }
   state.household = hh; state.me = me;
+  logEvent("member_joined", { returning: !!match });
   saveSession(); await enterApp();
   toast(match ? "Welcome back, " + me.name + "! 🏠" : "You're in! 🏠");
 }
@@ -476,10 +498,11 @@ async function sendFeedback() {
   const { error } = await db.from("feedback").insert({
     household_id: state.household ? state.household.id : null,
     member_id: state.me ? state.me.id : null,
-    message: msg
+    message: msg,
+    email: $("fbEmail").value.trim() || null
   });
   if (error) return toast("Couldn't send — try again");
-  $("fbText").value = "";
+  $("fbText").value = ""; $("fbEmail").value = "";
   toast("Got it — thank you! 💛");
 }
 
@@ -493,6 +516,10 @@ function showTab(name) {
 
 // poll for housemates' changes every 15s
 setInterval(() => { if (state.household) refresh(); }, 15000);
+if (!sessionStorage.getItem("casa_visited")) {
+  sessionStorage.setItem("casa_visited", "1");
+  logEvent("visit", { ua: navigator.userAgent.slice(0, 200) });
+}
 restoreSession();
 </script>
 </body>
