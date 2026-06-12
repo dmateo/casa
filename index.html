@@ -276,10 +276,17 @@ async function joinHouse() {
   if (!code || !you) return toast("Fill in both fields");
   const { data: hh } = await db.from("households").select("*").eq("invite_code", code).single();
   if (!hh) return toast("No house found with that code");
-  const { data: me } = await db.from("members").insert({ household_id: hh.id, name: you }).select().single();
+  // if this name already exists in the house, log in as them (multi-device support)
+  const { data: existing } = await db.from("members").select("*").eq("household_id", hh.id);
+  const match = (existing || []).find(m => m.name.trim().toLowerCase() === you.toLowerCase());
+  let me = match;
+  if (!me) {
+    const res = await db.from("members").insert({ household_id: hh.id, name: you }).select().single();
+    me = res.data;
+  }
   state.household = hh; state.me = me;
   saveSession(); await enterApp();
-  toast("You're in! 🏠");
+  toast(match ? "Welcome back, " + me.name + "! 🏠" : "You're in! 🏠");
 }
 
 function leaveHouse() {
