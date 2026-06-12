@@ -241,7 +241,7 @@ const SRC = (() => {
 })();
 async function logEvent(type, extra) {
   try {
-    await db.from("events").insert({ type, src: SRC, household_id: state.household ? state.household.id : null, meta: extra || null });
+    await db.from("journal").insert({ type, src: SRC, household_id: state.household ? state.household.id : null, meta: extra || null });
   } catch (e) { /* never break the app for telemetry */ }
 }
 let errCount = 0;
