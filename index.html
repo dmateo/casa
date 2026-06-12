@@ -13,12 +13,12 @@
 <meta property="og:site_name" content="Casa">
 <meta property="og:title" content="Casa — Your house, handled">
 <meta property="og:description" content="Split bills, rotate chores, keep the peace. The app for shared living.">
-<meta property="og:image" content="https://casa-ruby.vercel.app/og.png">
-<meta property="og:url" content="https://casa-ruby.vercel.app">
+<meta property="og:image" content="https://ourcasa.vercel.app/og.png">
+<meta property="og:url" content="https://ourcasa.vercel.app">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Casa — Your house, handled">
 <meta name="twitter:description" content="Split bills, rotate chores, keep the peace. The app for shared living.">
-<meta name="twitter:image" content="https://casa-ruby.vercel.app/og.png">
+<meta name="twitter:image" content="https://ourcasa.vercel.app/og.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
@@ -434,93 +434,4 @@ function renderExpenses() {
 
 // ---------- chores ----------
 async function addChore() {
-  const name = $("choreName").value.trim();
-  if (!name) return toast("Name the chore");
-  // assign to member with fewest open chores
-  const counts = {};
-  state.members.forEach(m => counts[m.id] = 0);
-  state.chores.forEach(c => { if (counts[c.assignee] !== undefined) counts[c.assignee]++; });
-  const assignee = state.members.slice().sort((a,b) => counts[a.id]-counts[b.id])[0].id;
-  await db.from("chores").insert({ household_id: state.household.id, name, assignee });
-  $("choreName").value = "";
-  toast("Added to rotation ✓"); await refresh();
-}
-
-async function doneChore(id) {
-  const chore = state.chores.find(c => c.id === id);
-  const idx = state.members.findIndex(m => m.id === chore.assignee);
-  const next = state.members[(idx + 1) % state.members.length].id;
-  await db.from("chores").update({ assignee: next, last_done: new Date().toISOString() }).eq("id", id);
-  toast("Nice. Rotated to " + memberName(next) + " →"); await refresh();
-}
-
-async function removeChore(id) {
-  await db.from("chores").delete().eq("id", id);
-  await refresh();
-}
-
-function renderChores() {
-  $("choreList").innerHTML = state.chores.map(c => {
-    const mine = c.assignee === state.me.id;
-    const last = c.last_done ? "last done " + new Date(c.last_done).toLocaleDateString(undefined,{month:"short",day:"numeric"}) : "never done yet";
-    return `<div class="item"><div><div class="t">${esc(c.name)}</div><div class="s">${last}</div></div>
-      <div style="display:flex;gap:6px;align-items:center;">
-        <span class="chip ${mine?"due":""}">${mine?"You're up!":esc(memberName(c.assignee))}</span>
-        <button class="small" onclick="doneChore('${c.id}')">Done</button>
-        <button class="small ghost" onclick="removeChore('${c.id}')" title="Remove">✕</button>
-      </div></div>`;
-  }).join("") || `<div class="empty">No chores yet. Add dishes, trash, bathroom…</div>`;
-}
-
-// ---------- house ----------
-function renderMembers() {
-  $("memberList").innerHTML = state.members.map(m =>
-    `<div class="memberrow"><div class="avatar">${initial(m.name)}</div>
-     <div><b>${esc(m.name)}</b>${m.id===state.me.id?" <span class='chip'>you</span>":""}</div></div>`).join("");
-}
-
-function inviteLink() {
-  return location.origin + location.pathname + "?join=" + state.household.invite_code;
-}
-function copyInvite() {
-  navigator.clipboard.writeText(inviteLink()).then(() => toast("Invite link copied 📋"));
-}
-function shareInvite() {
-  const text = `Join our house "${state.household.name}" on Casa 🏠 — code ${state.household.invite_code}: ${inviteLink()}`;
-  if (navigator.share) navigator.share({ text }).catch(()=>{});
-  else navigator.clipboard.writeText(text).then(() => toast("Invite copied — paste it in the group chat 📋"));
-}
-
-// ---------- feedback ----------
-async function sendFeedback() {
-  const msg = $("fbText").value.trim();
-  if (!msg) return toast("Write something first 🙂");
-  const { error } = await db.from("feedback").insert({
-    household_id: state.household ? state.household.id : null,
-    member_id: state.me ? state.me.id : null,
-    message: msg,
-    email: $("fbEmail").value.trim() || null
-  });
-  if (error) return toast("Couldn't send — try again");
-  $("fbText").value = ""; $("fbEmail").value = "";
-  toast("Got it — thank you! 💛");
-}
-
-// ---------- tabs ----------
-function showTab(name) {
-  ["money","chores","house"].forEach(t => {
-    $("tab-"+t).classList.toggle("hidden", t !== name);
-    $("tabbtn-"+t).classList.toggle("active", t === name);
-  });
-}
-
-// poll for housemates' changes every 15s
-setInterval(() => { if (state.household) refresh(); }, 15000);
-if (!sessionStorage.getItem("casa_visited")) {
-  sessionStorage.setItem("casa_visited", "1");
-  logEvent("visit", { ua: navigator.userAgent.slice(0, 200) });
-}
-restoreSession();
-</script>
-</body>
-</html>
+  const name = $("cho
