@@ -208,6 +208,12 @@
       <button onclick="shareInvite()">Share invite link</button>
     </div>
     <div class="card">
+      <h2>Ideas? Complaints? 💬</h2>
+      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:12px;">Casa is brand new and built on your feedback. What's missing, broken, or annoying?</p>
+      <textarea id="fbText" maxlength="2000" placeholder="Tell us anything…" style="width:100%;min-height:80px;padding:13px 14px;border:1.5px solid var(--line);border-radius:12px;font-size:16px;font-family:inherit;background:#FFFDF9;color:var(--ink);outline:none;resize:vertical;margin-bottom:10px;"></textarea>
+      <button onclick="sendFeedback()">Send feedback</button>
+    </div>
+    <div class="card">
       <button class="ghost" onclick="leaveHouse()">Switch house</button>
     </div>
   </div>
@@ -461,6 +467,20 @@ function shareInvite() {
   const text = `Join our house "${state.household.name}" on Casa 🏠 — code ${state.household.invite_code}: ${inviteLink()}`;
   if (navigator.share) navigator.share({ text }).catch(()=>{});
   else navigator.clipboard.writeText(text).then(() => toast("Invite copied — paste it in the group chat 📋"));
+}
+
+// ---------- feedback ----------
+async function sendFeedback() {
+  const msg = $("fbText").value.trim();
+  if (!msg) return toast("Write something first 🙂");
+  const { error } = await db.from("feedback").insert({
+    household_id: state.household ? state.household.id : null,
+    member_id: state.me ? state.me.id : null,
+    message: msg
+  });
+  if (error) return toast("Couldn't send — try again");
+  $("fbText").value = "";
+  toast("Got it — thank you! 💛");
 }
 
 // ---------- tabs ----------
