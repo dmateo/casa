@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Casa — Your house, handled</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --terra: #C8553D; --terra-dark: #A8432F; --cream: #FDF6EC; --card: #FFFFFF;
+    --ink: #2D2A26; --ink-soft: #8A7F73; --green: #3E7C59; --amber: #E0A458;
+    --line: #EFE6D8; --radius: 16px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--cream); color: var(--ink); min-height: 100vh;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 20px 16px 90px; }
+  .hidden { display: none !important; }
+
+  /* Landing */
+  .hero { text-align: center; padding: 48px 0 28px; }
+  .hero .logo { font-size: 56px; }
+  .hero h1 { font-size: 36px; letter-spacing: -1px; margin-top: 8px; }
+  .hero p { color: var(--ink-soft); margin-top: 6px; font-size: 16px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(45,42,38,0.04);
+  }
+  .card h2 { font-size: 18px; margin-bottom: 12px; }
+  input, select {
+    width: 100%; padding: 13px 14px; border: 1.5px solid var(--line); border-radius: 12px;
+    font-size: 16px; margin-bottom: 10px; background: #FFFDF9; color: var(--ink); outline: none;
+  }
+  input:focus, select:focus { border-color: var(--terra); }
+  button {
+    width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 16px;
+    font-weight: 600; cursor: pointer; background: var(--terra); color: white;
+    transition: background .15s;
+  }
+  button:hover { background: var(--terra-dark); }
+  button.ghost { background: transparent; color: var(--terra); border: 1.5px solid var(--terra); }
+  button.small { width: auto; padding: 8px 14px; font-size: 14px; }
+  .muted { color: var(--ink-soft); font-size: 13px; text-align: center; margin: 14px 0; }
+
+  /* App header */
+  .apphead { display: flex; justify-content: space-between; align-items: center; padding: 18px 0 14px; }
+  .apphead h1 { font-size: 24px; }
+  .apphead .code {
+    background: var(--card); border: 1px dashed var(--terra); color: var(--terra);
+    padding: 6px 12px; border-radius: 10px; font-weight: 700; font-size: 14px;
+    cursor: pointer; letter-spacing: 1px;
+  }
+
+  /* Tabs */
+  .tabs {
+    position: fixed; bottom: 0; left: 0; right: 0; background: var(--card);
+    border-top: 1px solid var(--line); display: flex; max-width: 480px;
+    margin: 0 auto; border-radius: 16px 16px 0 0;
+  }
+  .tabs button {
+    background: none; color: var(--ink-soft); border-radius: 0; font-size: 13px;
+    padding: 12px 0 16px; display: flex; flex-direction: column; gap: 2px; align-items: center;
+  }
+  .tabs button .ic { font-size: 22px; }
+  .tabs button.active { color: var(--terra); }
+  .tabs button:hover { background: none; }
+
+  /* Balances */
+  .balrow { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .balrow:last-child { border-bottom: none; }
+  .balrow .name { font-weight: 600; }
+  .pos { color: var(--green); font-weight: 700; }
+  .neg { color: var(--terra); font-weight: 700; }
+  .zero { color: var(--ink-soft); font-weight: 600; }
+  .suggestion {
+    background: #FBF1E4; border-radius: 10px; padding: 10px 12px; font-size: 14px;
+    margin-top: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+
+  /* Lists */
+  .item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); gap: 10px; }
+  .item:last-child { border-bottom: none; }
+  .item .t { font-weight: 600; font-size: 15px; }
+  .item .s { color: var(--ink-soft); font-size: 13px; margin-top: 2px; }
+  .amt { font-weight: 700; white-space: nowrap; }
+  .chip {
+    display: inline-block; background: #F3E8D9; color: var(--ink); border-radius: 8px;
+    padding: 3px 9px; font-size: 12px; font-weight: 600;
+  }
+  .chip.due { background: #F7DCD3; color: var(--terra-dark); }
+  .splitrow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .splitrow label {
+    display: flex; gap: 5px; align-items: center; background: #FFFDF9; border: 1.5px solid var(--line);
+    padding: 7px 11px; border-radius: 10px; font-size: 14px; cursor: pointer;
+  }
+  .splitrow input { width: auto; margin: 0; }
+  .memberrow { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .memberrow:last-child { border-bottom: none; }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%; background: var(--amber); color: white;
+    display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0;
+  }
+  .empty { text-align: center; color: var(--ink-soft); padding: 24px 10px; font-size: 14px; }
+  .toast {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: var(--ink);
+    color: white; padding: 10px 18px; border-radius: 12px; font-size: 14px; z-index: 50;
+    opacity: 0; transition: opacity .25s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .footer-note { text-align: center; color: var(--ink-soft); font-size: 12px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+
+<!-- ===== LANDING ===== -->
+<div class="wrap" id="landing">
+  <div class="hero">
+    <div class="logo">🏠</div>
+    <h1>Casa</h1>
+    <p>Your house, handled. Bills, chores, peace.</p>
+  </div>
+  <div class="card">
+    <h2>Start your house</h2>
+    <input id="newHouseName" placeholder="House name (e.g. 12 Maple St)" maxlength="40">
+    <input id="newYourName" placeholder="Your name" maxlength="30">
+    <button onclick="createHouse()">Create house</button>
+  </div>
+  <div class="muted">— or —</div>
+  <div class="card">
+    <h2>Join your housemates</h2>
+    <input id="joinCode" placeholder="Invite code (e.g. TACO42)" maxlength="6" style="text-transform:uppercase">
+    <input id="joinYourName" placeholder="Your name" maxlength="30">
+    <button class="ghost" onclick="joinHouse()">Join house</button>
+  </div>
+  <p class="footer-note">Casa MVP — built for shared living.</p>
+</div>
+
+<!-- ===== APP ===== -->
+<div class="wrap hidden" id="app">
+  <div class="apphead">
+    <h1 id="houseTitle">🏠</h1>
+    <div class="code" id="inviteChip" onclick="copyInvite()" title="Copy invite">······</div>
+  </div>
+
+  <!-- MONEY -->
+  <div id="tab-money">
+    <div class="card">
+      <h2>Balances</h2>
+      <div id="balances"></div>
+      <div id="suggestions"></div>
+    </div>
+    <div class="card">
+      <h2>Add expense</h2>
+      <input id="expDesc" placeholder="What was it? (groceries, wifi…)" maxlength="60">
+      <input id="expAmount" type="number" inputmode="decimal" placeholder="Amount" min="0" step="0.01">
+      <select id="expPaidBy"></select>
+      <div style="font-size:13px;color:var(--ink-soft);margin-bottom:8px;">Split between:</div>
+      <div class="splitrow" id="expSplit"></div>
+      <button onclick="addExpense()">Split it</button>
+    </div>
+    <div class="card">
+      <h2>Recent activity</h2>
+      <div id="expenseList"></div>
+    </div>
+  </div>
+
+  <!-- CHORES -->
+  <div id="tab-chores" class="hidden">
+    <div class="card">
+      <h2>This week's chores</h2>
+      <div id="choreList"></div>
+    </div>
+    <div class="card">
+      <h2>Add a chore</h2>
+      <input id="choreName" placeholder="Chore (dishes, trash, bathroom…)" maxlength="40">
+      <button onclick="addChore()">Add to rotation</button>
+      <p style="font-size:13px;color:var(--ink-soft);margin-top:10px;">Chores rotate automatically to the next housemate when marked done. Casa is the bad guy, not you.</p>
+    </div>
+  </div>
+
+  <!-- HOUSE -->
+  <div id="tab-house" class="hidden">
+    <div class="card">
+      <h2>Housemates</h2>
+      <div id="memberList"></div>
+    </div>
+    <div class="card">
+      <h2>Invite housemates</h2>
+      <p style="font-size:14px;color:var(--ink-soft);margin-bottom:12px;">Casa only works when the whole house is in. Share your code:</p>
+      <button onclick="shareInvite()">Share invite link</button>
+    </div>
+    <div class="card">
+      <button class="ghost" onclick="leaveHouse()">Switch house</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button id="tabbtn-money" class="active" onclick="showTab('money')"><span class="ic">💸</span>Money</button>
+    <button id="tabbtn-chores" onclick="showTab('chores')"><span class="ic">🧹</span>Chores</button>
+    <button id="tabbtn-house" onclick="showTab('house')"><span class="ic">🏠</span>House</button>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://toidpqewqqrjpifzerto.supabase.co";
+const SUPABASE_KEY = "sb_publishable_t7PZycVnZLanc_Rr0HGeKw_axe7nPAt";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let state = { household: null, members: [], me: null, expenses: [], settlements: [], chores: [] };
+
+const $ = id => document.getElementById(id);
+const fmt = n => (n < 0 ? "-" : "") + "$" + Math.abs(n).toFixed(2);
+const esc = s => { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; };
+
+function toast(msg) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+function genCode() {
+  const words = ["TACO","CASA","SOFA","LAMP","MOPS","DISH","RENT","BEDS","KEYS","OVEN"];
+  return words[Math.floor(Math.random()*words.length)] + Math.floor(10 + Math.random()*89);
+}
+
+// ---------- session ----------
+function saveSession() {
+  localStorage.setItem("casa_session", JSON.stringify({ household_id: state.household.id, member_id: state.me.id }));
+}
+async function restoreSession() {
+  const params = new URLSearchParams(location.search);
+  const joinParam = params.get("join");
+  if (joinParam) { $("joinCode").value = joinParam.toUpperCase(); }
+  const raw = localStorage.getItem("casa_session");
+  if (!raw) return;
+  try {
+    const s = JSON.parse(raw);
+    const { data: hh } = await db.from("households").select("*").eq("id", s.household_id).single();
+    const { data: me } = await db.from("members").select("*").eq("id", s.member_id).single();
+    if (hh && me) { state.household = hh; state.me = me; await enterApp(); }
+  } catch (e) { localStorage.removeItem("casa_session"); }
+}
+
+// ---------- onboarding ----------
+async function createHouse() {
+  const name = $("newHouseName").value.trim(), you = $("newYourName").value.trim();
+  if (!name || !you) return toast("Fill in both fields");
+  const { data: hh, error } = await db.from("households")
+    .insert({ name, invite_code: genCode() }).select().single();
+  if (error) return toast("Couldn't create house — try again");
+  const { data: me } = await db.from("members").insert({ household_id: hh.id, name: you }).select().single();
+  state.household = hh; state.me = me;
+  saveSession(); await enterApp();
+  toast("Welcome home! Share your invite code 🎉");
+}
+
+async function joinHouse() {
+  const code = $("joinCode").value.trim().toUpperCase(), you = $("joinYourName").value.trim();
+  if (!code || !you) return toast("Fill in both fields");
+  const { data: hh } = await db.from("households").select("*").eq("invite_code", code).single();
+  if (!hh) return toast("No house found with that code");
+  const { data: me } = await db.from("members").insert({ household_id: hh.id, name: you }).select().single();
+  state.household = hh; state.me = me;
+  saveSession(); await enterApp();
+  toast("You're in! 🏠");
+}
+
+function leaveHouse() {
+  localStorage.removeItem("casa_session");
+  location.href = location.pathname;
+}
+
+// ---------- app ----------
+async function enterApp() {
+  $("landing").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  $("houseTitle").textContent = "🏠 " + state.household.name;
+  $("inviteChip").textContent = state.household.invite_code;
+  await refresh();
+}
+
+async function refresh() {
+  const hid = state.household.id;
+  const [m, e, s, c] = await Promise.all([
+    db.from("members").select("*").eq("household_id", hid).order("created_at"),
+    db.from("expenses").select("*").eq("household_id", hid).order("created_at", { ascending: false }).limit(50),
+    db.from("settlements").select("*").eq("household_id", hid),
+    db.from("chores").select("*").eq("household_id", hid).order("created_at"),
+  ]);
+  state.members = m.data || []; state.expenses = e.data || [];
+  state.settlements = s.data || []; state.chores = c.data || [];
+  renderAll();
+}
+
+function memberName(id) { const m = state.members.find(x => x.id === id); return m ? m.name : "?"; }
+function initial(name) { return (name || "?").trim()[0].toUpperCase(); }
+
+function renderAll() { renderBalances(); renderExpenseForm(); renderExpenses(); renderChores(); renderMembers(); }
+
+// ---------- balances ----------
+function computeBalances() {
+  const bal = {};
+  state.members.forEach(m => bal[m.id] = 0);
+  state.expenses.forEach(e => {
+    const split = (e.split_among && e.split_among.length) ? e.split_among : state.members.map(m => m.id);
+    const share = Number(e.amount) / split.length;
+    if (bal[e.paid_by] !== undefined) bal[e.paid_by] += Number(e.amount);
+    split.forEach(id => { if (bal[id] !== undefined) bal[id] -= share; });
+  });
+  state.settlements.forEach(s => {
+    if (bal[s.from_member] !== undefined) bal[s.from_member] += Number(s.amount);
+    if (bal[s.to_member] !== undefined) bal[s.to_member] -= Number(s.amount);
+  });
+  return bal;
+}
+
+function renderBalances() {
+  const bal = computeBalances();
+  $("balances").innerHTML = state.members.map(m => {
+    const b = bal[m.id];
+    const cls = b > 0.01 ? "pos" : b < -0.01 ? "neg" : "zero";
+    const label = b > 0.01 ? "is owed " + fmt(b) : b < -0.01 ? "owes " + fmt(-b) : "settled up ✓";
+    return `<div class="balrow"><span class="name">${esc(m.name)}${m.id===state.me.id?" (you)":""}</span><span class="${cls}">${label}</span></div>`;
+  }).join("") || `<div class="empty">No housemates yet</div>`;
+
+  // simplify debts (greedy)
+  const debtors = [], creditors = [];
+  Object.entries(bal).forEach(([id, b]) => {
+    if (b < -0.01) debtors.push({ id, amt: -b });
+    if (b > 0.01) creditors.push({ id, amt: b });
+  });
+  debtors.sort((a,b)=>b.amt-a.amt); creditors.sort((a,b)=>b.amt-a.amt);
+  const sugg = [];
+  let i = 0, j = 0;
+  while (i < debtors.length && j < creditors.length) {
+    const pay = Math.min(debtors[i].amt, creditors[j].amt);
+    sugg.push({ from: debtors[i].id, to: creditors[j].id, amt: pay });
+    debtors[i].amt -= pay; creditors[j].amt -= pay;
+    if (debtors[i].amt < 0.01) i++;
+    if (creditors[j].amt < 0.01) j++;
+  }
+  $("suggestions").innerHTML = sugg.map(s =>
+    `<div class="suggestion"><span><b>${esc(memberName(s.from))}</b> pays <b>${esc(memberName(s.to))}</b> ${fmt(s.amt)}</span>
+     <button class="small" onclick="settle('${s.from}','${s.to}',${s.amt.toFixed(2)})">Mark paid</button></div>`
+  ).join("");
+}
+
+async function settle(from, to, amt) {
+  await db.from("settlements").insert({ household_id: state.household.id, from_member: from, to_member: to, amount: amt });
+  toast("Settled ✓"); await refresh();
+}
+
+// ---------- expenses ----------
+function renderExpenseForm() {
+  $("expPaidBy").innerHTML = state.members.map(m =>
+    `<option value="${m.id}" ${m.id===state.me.id?"selected":""}>Paid by ${esc(m.name)}${m.id===state.me.id?" (you)":""}</option>`).join("");
+  $("expSplit").innerHTML = state.members.map(m =>
+    `<label><input type="checkbox" value="${m.id}" checked>${esc(m.name)}</label>`).join("");
+}
+
+async function addExpense() {
+  const desc = $("expDesc").value.trim();
+  const amount = parseFloat($("expAmount").value);
+  const paidBy = $("expPaidBy").value;
+  const split = [...$("expSplit").querySelectorAll("input:checked")].map(i => i.value);
+  if (!desc || !amount || amount <= 0) return toast("Add a description and amount");
+  if (!split.length) return toast("Pick at least one person to split with");
+  await db.from("expenses").insert({ household_id: state.household.id, paid_by: paidBy, description: desc, amount, split_among: split });
+  $("expDesc").value = ""; $("expAmount").value = "";
+  toast("Expense split ✓"); await refresh();
+}
+
+function renderExpenses() {
+  $("expenseList").innerHTML = state.expenses.map(e => {
+    const n = (e.split_among && e.split_among.length) || state.members.length;
+    const d = new Date(e.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return `<div class="item"><div><div class="t">${esc(e.description)}</div>
+      <div class="s">${esc(memberName(e.paid_by))} paid · split ${n} way${n>1?"s":""} · ${d}</div></div>
+      <div class="amt">${fmt(Number(e.amount))}</div></div>`;
+  }).join("") || `<div class="empty">No expenses yet. Add the first one 👆</div>`;
+}
+
+// ---------- chores ----------
+async function addChore() {
+  const name = $("choreName").value.trim();
+  if (!name) return toast("Name the chore");
+  // assign to member with fewest open chores
+  const counts = {};
+  state.members.forEach(m => counts[m.id] = 0);
+  state.chores.forEach(c => { if (counts[c.assignee] !== undefined) counts[c.assignee]++; });
+  const assignee = state.members.slice().sort((a,b) => counts[a.id]-counts[b.id])[0].id;
+  await db.from("chores").insert({ household_id: state.household.id, name, assignee });
+  $("choreName").value = "";
+  toast("Added to rotation ✓"); await refresh();
+}
+
+async function doneChore(id) {
+  const chore = state.chores.find(c => c.id === id);
+  const idx = state.members.findIndex(m => m.id === chore.assignee);
+  const next = state.members[(idx + 1) % state.members.length].id;
+  await db.from("chores").update({ assignee: next, last_done: new Date().toISOString() }).eq("id", id);
+  toast("Nice. Rotated to " + memberName(next) + " →"); await refresh();
+}
+
+async function removeChore(id) {
+  await db.from("chores").delete().eq("id", id);
+  await refresh();
+}
+
+function renderChores() {
+  $("choreList").innerHTML = state.chores.map(c => {
+    const mine = c.assignee === state.me.id;
+    const last = c.last_done ? "last done " + new Date(c.last_done).toLocaleDateString(undefined,{month:"short",day:"numeric"}) : "never done yet";
+    return `<div class="item"><div><div class="t">${esc(c.name)}</div><div class="s">${last}</div></div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <span class="chip ${mine?"due":""}">${mine?"You're up!":esc(memberName(c.assignee))}</span>
+        <button class="small" onclick="doneChore('${c.id}')">Done</button>
+        <button class="small ghost" onclick="removeChore('${c.id}')" title="Remove">✕</button>
+      </div></div>`;
+  }).join("") || `<div class="empty">No chores yet. Add dishes, trash, bathroom…</div>`;
+}
+
+// ---------- house ----------
+function renderMembers() {
+  $("memberList").innerHTML = state.members.map(m =>
+    `<div class="memberrow"><div class="avatar">${initial(m.name)}</div>
+     <div><b>${esc(m.name)}</b>${m.id===state.me.id?" <span class='chip'>you</span>":""}</div></div>`).join("");
+}
+
+function inviteLink() {
+  return location.origin + location.pathname + "?join=" + state.household.invite_code;
+}
+function copyInvite() {
+  navigator.clipboard.writeText(inviteLink()).then(() => toast("Invite link copied 📋"));
+}
+function shareInvite() {
+  const text = `Join our house "${state.household.name}" on Casa 🏠 — code ${state.household.invite_code}: ${inviteLink()}`;
+  if (navigator.share) navigator.share({ text }).catch(()=>{});
+  else navigator.clipboard.writeText(text).then(() => toast("Invite copied — paste it in the group chat 📋"));
+}
+
+// ---------- tabs ----------
+function showTab(name) {
+  ["money","chores","house"].forEach(t => {
+    $("tab-"+t).classList.toggle("hidden", t !== name);
+    $("tabbtn-"+t).classList.toggle("active", t === name);
+  });
+}
+
+// poll for housemates' changes every 15s
+setInterval(() => { if (state.household) refresh(); }, 15000);
+restoreSession();
+</script>
+</body>
+</html>
